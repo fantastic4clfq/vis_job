@@ -1,0 +1,62 @@
+#数据预处理，按照那个杨彬学长的文档做了2.1.1的内容，每次处理文件的时候可能需要改一改函数里面的文件路径
+
+
+import jsonlines
+from collections import Counter
+import json
+
+def data_clean():
+    """数据清洗，去除type=-1的json对象"""
+    count = 0
+    # 打开原始 JSON Lines 文件和一个新文件用于写入更新后的数据
+    with jsonlines.open('high_value_vis\part-00001-905505be-27fc-4ec6-9fb3-3c3a9eee30c4-c000.json', 'r') as reader, jsonlines.open('high_value_vis/updated_part_00001.json', 'w') as writer:
+        # 遍历每一行数据
+        for obj in reader:
+            if obj['type'] == -1:
+                # 跳过要删除的特定对象
+                count+=1
+                continue
+
+            # 写入更新后的 JSON 对象到新文件
+            writer.write(obj)
+    print(count," rows affected.")
+    #统计得到00000数据被删除了39073个数据，part_00001数据被删除了39064个
+
+def data_consistency():
+    """数据一致性处理，找出fid相同但是type不同的数据，然后把他们处理为对应ID最多的type"""
+    with jsonlines.open('high_value_vis/updated_part_00001.json','r') as reader:
+        data = list(reader)
+        type_id = {}
+        count = 0
+        for row in data:
+            row_id = row['id']
+            row_type = row['type']
+            if row_id in type_id:
+                type_id[row_id].append(row_type)
+            else:
+                type_id[row_id] = [row_type]
+        # 遍历 JSON Lines 文件，将具有相同 ID 的条目的属性值更新为出现频率最多的属性值
+
+        for obj in data:
+            obj_id = obj['id']
+            type_list = type_id[obj_id]
+            most_common_attribute = Counter(type_list).most_common(1)[0][0]
+            obj['type'] = most_common_attribute
+        
+    with jsonlines.open('high_value_vis/updated_data_1.json', 'w') as writer:
+        writer.write_all(data)
+
+def find_different():
+    """找出文件中是否存在id相同， 但是type不同的数据"""
+    with jsonlines.open('high_value_vis/updated_data_1.json','r') as reader:
+        type_id = {}
+        count = 0
+        for row in reader:
+            row_id = row['id']
+            row_type = row['type']
+            if row_id in type_id:
+                if type_id[row_id] != row_type:
+                    count+=1
+            else:
+                type_id[row_id] = row_type
+        print(count)

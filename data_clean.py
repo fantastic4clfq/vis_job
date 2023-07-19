@@ -4,6 +4,7 @@
 import jsonlines
 from collections import Counter
 import json
+import geopandas as gpd
 
 def data_clean():
     """数据清洗，去除type=-1的json对象"""

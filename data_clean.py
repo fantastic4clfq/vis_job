@@ -61,7 +61,7 @@ def find_different():
             else:
                 type_id[row_id] = row_type
         print(count)
-    
+#更新完成了2.1.2的内容 
 def data_intersects():
     """用于判断有多少条机动车道"""
     # 读取 GeoJSON 文件

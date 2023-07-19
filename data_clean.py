@@ -60,3 +60,53 @@ def find_different():
             else:
                 type_id[row_id] = row_type
         print(count)
+    
+def data_intersects():
+    """用于判断有多少条机动车道"""
+    # 读取 GeoJSON 文件
+    data = gpd.read_file('high_value_vis/road10map/laneroad10.geojson')
+
+    # 提取 LineString 几何对象及其 ID
+    linestrings = data[(data['turn_type'] == 0) | (data['turn_type']==1)]
+    linestrings = linestrings[linestrings['lane_no']!=0]
+
+    # 存储重叠的 LineString 对象的 ID
+    overlapping_ids = []
+
+    # 判断 LineString 之间是否有重叠
+    for i in range(len(linestrings)):
+        for j in range(i + 1, len(linestrings)):
+            if linestrings['geometry'].iloc[i].intersects(linestrings['geometry'].iloc[j]):
+                overlapping_ids.append((linestrings['fid'].iloc[i], linestrings['fid'].iloc[j]))
+
+    # 打印存在重叠的 LineString 对象的 ID
+    if len(overlapping_ids) > 0:
+        print("LineString 之间存在重叠：")
+        for ids in overlapping_ids:
+            print("LineString ID:", ids[0], "和", "LineString ID:", ids[1])
+    else:
+        print("LineString 之间没有重叠")
+    road_set = list()
+    count = 0
+    flag = False
+    for obj in overlapping_ids:
+        if len(road_set)==0:
+            road_set.append([obj[0],obj[1]])
+        else:
+            for yuansu in road_set:
+                if (obj[0] in yuansu) or (obj[1] in yuansu):
+                    if obj[1] not in yuansu:
+                        yuansu.append(obj[1])
+                    if obj[0] not in yuansu:
+                        yuansu.append(obj[0])
+                    flag = True
+                    break
+            if not flag:
+                road_set.append([obj[0],obj[1]])
+            flag = False
+    print(len(road_set))
+    for road in road_set:
+        count +=len(road)
+        print(road)
+    #road_set中的每一个列表表示一条道路，结果为25条道路，车道fid一致，如果把文中提到的车道汇合情况算作一条则一致
+    print(count)

@@ -1,0 +1,291 @@
+# data clean
+
+import json
+import jsonlines
+from collections import Counter
+import geopandas as gpd
+from shapely.geometry import shape, LineString, Polygon
+from collections import Counter
+
+
+def data_clean(index):
+    count = 0
+    with jsonlines.open('/Users/bladeliu/Downloads/TranVis/ori_data/less_cyclist_time-{}.json'.format(index), 'r') as reader, \
+            jsonlines.open('/Users/bladeliu/Downloads/TranVis/new_data/managed_less_cyclist_time-{}.json'.format(index),
+                           'w') as writer:
+        for obj in reader:
+            if obj['type'] == -1:
+                # skip data tpye "-1"
+                count += 1
+                continue
+
+                # write to new file
+            writer.write(obj)
+    print(count, "rows affected.")
+
+
+def data_consistency(index):
+    """handle the difference between fid and type"""
+    with jsonlines.open('/Users/bladeliu/Downloads/TranVis/new_data/updated_part_temp_part-{}.json'.format(index),
+                        'r') as reader:
+        data = list(reader)
+        type_id = {}
+        for row in data:
+            row_id = row['id']
+            row_type = row['type']
+            if row_id in type_id:
+                type_id[row_id].append(row_type)
+            else:
+                type_id[row_id] = [row_type]
+        # change to the more data one
+
+        for obj in data:
+            obj_id = obj['id']
+            type_list = type_id[obj_id]
+            most_common_attribute = Counter(type_list).most_common(1)[0][0]
+            obj['type'] = most_common_attribute
+
+    with jsonlines.open('/Users/bladeliu/Downloads/TranVis/new_data/consised_part_data-{}.json'.format(index),
+                        'w') as writer:
+        writer.write_all(data)
+
+
+def find_different():
+    """find if there is any data id and type are different"""
+    with jsonlines.open('/Users/bladeliu/Downloads/TranVis/new_data/consised_part_data.json', 'r') as reader:
+        type_id = {}
+        count = 0
+        for row in reader:
+            row_id = row['id']
+            row_type = row['type']
+            if row_id in type_id:
+                if type_id[row_id] != row_type:
+                    count += 1
+            else:
+                type_id[row_id] = row_type
+        print(count)
+
+
+def get_bound(index):
+    """get the upper and lower bound of time_meas"""
+    with jsonlines.open('/Users/bladeliu/Downloads/TranVis/new_data/consised_part_data-{}.json'.format(index),
+                        'r') as reader:
+        data = list(reader)
+        times = []
+        for row in data:
+            row_time_meas = row['time_meas']
+            times.append(row_time_meas)
+        print(max(times))
+        print(min(times))
+
+
+def mass_behavior(index):
+    """get id, velocity and time_meas"""
+    with jsonlines.open('/Users/bladeliu/Downloads/TranVis/new_data/consised_part_data-{}.json'.format(index),
+                        'r') as reader:
+        data = list(reader)
+        filtered_data = []
+        for row in data:
+            filtered_item = {
+                "id": row['id'],
+                "velocity": row['velocity'],
+                "time_meas": row['time_meas']
+            }
+            filtered_data.append(filtered_item)
+
+    with jsonlines.open('/Users/bladeliu/Downloads/TranVis/new_data/mass_behavior_part_data-{}.json'.format(index),
+                        'w') as writer:
+        writer.write_all(filtered_data)
+
+
+def clean_mass_without0():
+    """clean the data whose velocity is 0"""
+    count = 0
+    with jsonlines.open('/Users/bladeliu/Downloads/TranVis/new_data/mass_behavior_data.json', 'r') as reader, \
+            jsonlines.open('/Users/bladeliu/Downloads/TranVis/new_data/managed_mass_data.json', 'w') as writer:
+        for obj in reader:
+            if obj['velocity'] == 0:
+                count += 1
+                continue
+
+            writer.write(obj)
+    print(count, "rows affected.")
+    # 9031277 of 14879265 rows affected.
+
+
+def clean_mass_with0():
+    """clean the data to get 0 velocity"""
+    count = 0
+    with jsonlines.open('/Users/bladeliu/Downloads/TranVis/new_data/mass_behavior_data.json', 'r') as reader, \
+            jsonlines.open('/Users/bladeliu/Downloads/TranVis/new_data/managed_0000_data.json', 'w') as writer:
+        for obj in reader:
+            if obj['velocity'] != 0:
+                count += 1
+                continue
+
+            writer.write(obj)
+    print(count, "rows affected.")
+
+
+def mass_time_velocity():
+    with jsonlines.open('/Users/bladeliu/Downloads/TranVis/new_data/managed_mass_data.json', 'r') as reader:
+        data = list(reader)
+        filtered_data = []
+        for row in data:
+            filtered_item = {
+                "velocity": row['velocity'],
+                "time_meas": row['time_meas']
+            }
+            filtered_data.append(filtered_item)
+
+    with jsonlines.open('/Users/bladeliu/Downloads/TranVis/new_data/mass_time_velocity.json', 'w') as writer:
+        writer.write_all(filtered_data)
+
+
+def mass_time_0():
+    with jsonlines.open('/Users/bladeliu/Downloads/TranVis/new_data/managed_0000_data.json', 'r') as reader:
+        data = list(reader)
+        filtered_data = []
+        for row in data:
+            filtered_item = {
+                "time_meas": row['time_meas']
+            }
+            filtered_data.append(filtered_item)
+
+    with jsonlines.open('/Users/bladeliu/Downloads/TranVis/new_data/time_meas_0000_data.json', 'w') as writer:
+        writer.write_all(filtered_data)
+
+
+def mass_time_id_0():
+    with jsonlines.open('/Users/bladeliu/Downloads/TranVis/new_data/managed_0000_data.json', 'r') as reader:
+        data = list(reader)
+        filtered_data = []
+        for row in data:
+            filtered_item = {
+                "id": row['id'],
+                "time_meas": row['time_meas']
+            }
+            filtered_data.append(filtered_item)
+
+    with jsonlines.open('/Users/bladeliu/Downloads/TranVis/new_data/new_managed_0000_data.json', 'w') as writer:
+        writer.write_all(filtered_data)
+
+
+def get_cyclist_static(index):
+    """get cyclist that are static"""
+    count = 0
+    with jsonlines.open('/Users/bladeliu/Downloads/TranVis/new_data/consised_part_data-{}.json'.format(index), 'r') \
+            as reader, jsonlines.open(
+        '/Users/bladeliu/Downloads/TranVis/new_data/updated_cyclist_part-{}.json'.format(index), 'w') as writer:
+        for obj in reader:
+            if obj['velocity'] == 0 and obj['type'] == 3:
+                count += 1
+                continue
+            writer.write(obj)
+
+
+def managed_cyclist(index):
+    """get static cyclist's id and time_meas"""
+    with jsonlines.open('/Users/bladeliu/Downloads/TranVis/new_data/updated_cyclist_part-{}.json'.format(index), 'r') \
+            as reader1, jsonlines.open(
+        '/Users/bladeliu/Downloads/TranVis/new_data/less_cyclist_part-{}.json'.format(index), 'w') as writer1:
+        data = list(reader1)
+        filtered_data = []
+        for row in data:
+            filter_item = {
+                "id": row['id'],
+                "time_meas": row['time_meas']
+            }
+            filtered_data.append(filter_item)
+        writer1.write_all(filtered_data)
+
+
+def split_cyc_time(index):
+    """split cyclist data by time"""
+    with jsonlines.open('/Users/bladeliu/Downloads/TranVis/new_data/less_cyclist.json', 'r') as reader,\
+            jsonlines.open('/Users/bladeliu/Downloads/TranVis/new_data/less_cyclist_time-{}.json'.format(index),
+                           'w') as writer:
+        data = list(reader)
+        split_data = []
+        for row in data:
+            if 1681340400000000 + index * 3600000000 < row['time_meas'] < 1681344000000000 + index * 3600000000:
+                split_item = {
+                    "id": row['id'],
+                    "time_meas": row['time_meas']
+                }
+                split_data.append(split_item)
+        writer.write_all(split_data)
+
+
+def get_cyclist_stop_time(index):
+    """get cyclist stop time"""
+    f1 = open('/Users/bladeliu/Downloads/TranVis/new_data/managed_less_cyclist_time-{}.json'.format(index), 'r')
+    data = json.load(f1)
+
+    new_data = data
+    cyc_id = []
+    # get time_meas in four number
+    for i in range(len(data)):
+        new_data[i]["time_meas"] = str(data[i]["time_meas"])
+        new_data[i]["time_meas"] = int(new_data[i]["time_meas"][6:10:1])
+    # get unique id
+        if data[i]["id"] not in cyc_id:
+            cyc_id.append(data[i]["id"])
+
+    stop_time = []
+    # length of stopping time
+    stop_point = [0]
+    # time point
+    for w in range(len(cyc_id)):
+        stop_time.append(max(stop_point, default=0) - min(stop_point, default=0))
+        stop_point = []
+        for j in range(len(cyc_id)):
+            if data[j]["id"] == cyc_id[w]:
+                stop_point.append(new_data[j]["time_meas"])
+    print(sum(stop_time)/len(stop_time))
+
+
+def has_duplicates(lst):
+    count = Counter(lst)
+    duplicates = [key for key, value in count.items() if value > 1]
+    return len(duplicates) > 0
+
+
+def is_repeat():
+    f1 = open('/Users/bladeliu/Downloads/TranVis/new_data/standard_mass_behavior_data.json', 'r')
+    data = json.load(f1)
+
+    ids = []
+    for m in range(10000000):
+        if data[m]["id"] not in ids:
+            ids.append(data[m]["id"])
+
+    flag = 0
+    for id in ids:
+        repeat_list = []
+        for m in range(10000):
+            if data[m]["id"] == id:
+                repeat_list.append(data[m]["time_meas"])
+        if has_duplicates(repeat_list):
+            flag = 1
+    print(flag)
+
+
+if __name__ == "__main__":
+    for i in range(9):
+        # data_clean(i)
+        # data_consistency(i)
+        # print("--------the bound in data-{}--------".format(i))
+        # get_bound(i)
+        # mass_behavior(i)
+        # clean_mass()
+        # mass_time_velocity()
+        # clean_mass_with0()
+        # mass_time_0()
+        # mass_time_id_0()
+        # get_cyclist(i)
+        # managed_cyclist(i)
+        # split_cyc_time(i)
+        # get_cyclist_stop_time(i)
+    # is_repeat()
+        get_cyclist_stop_time(i)

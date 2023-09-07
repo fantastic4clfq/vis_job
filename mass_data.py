@@ -288,4 +288,4 @@ if __name__ == "__main__":
         # split_cyc_time(i)
         # get_cyclist_stop_time(i)
     # is_repeat()
-        get_cyclist_stop_time(i)
+        # get_cyclist_stop_time(i)
